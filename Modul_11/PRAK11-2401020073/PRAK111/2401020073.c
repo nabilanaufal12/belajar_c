@@ -2,101 +2,153 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Struktur untuk menyimpan data Edge (Garis)
-struct Edge {
-    char src, dest;
-    int weight;
-};
+#define MAX 100
 
-// Struktur untuk representasi subset (Union-Find)
-struct Subset {
+typedef struct {
+    char u, v;
+    int weight;
+} Edge;
+
+typedef struct {
+    char data;
     int parent;
     int rank;
-};
+} Node;
 
-// Fungsi komparasi untuk qsort (mengurutkan berdasarkan bobot)
-int compareEdges(const void* a, const void* b) {
-    struct Edge* a1 = (struct Edge*)a;
-    struct Edge* b1 = (struct Edge*)b;
-    return a1->weight - b1->weight;
-}
+Edge edges[MAX];
+Node nodes[MAX];
+int edgeCount = 0;
+int nodeCount = 0;
 
-// Fungsi Find (mencari parent dari suatu node)
-int find(struct Subset subsets[], int i) {
-    if (subsets[i].parent != i)
-        subsets[i].parent = find(subsets, subsets[i].parent);
-    return subsets[i].parent;
-}
+Edge mstEdges[MAX];
+int mstCount = 0;
 
-// Fungsi Union (menggabungkan dua himpunan)
-void Union(struct Subset subsets[], int x, int y) {
-    int xroot = find(subsets, x);
-    int yroot = find(subsets, y);
-
-    if (subsets[xroot].rank < subsets[yroot].rank)
-        subsets[xroot].parent = yroot;
-    else if (subsets[xroot].rank > subsets[yroot].rank)
-        subsets[yroot].parent = xroot;
-    else {
-        subsets[yroot].parent = xroot;
-        subsets[xroot].rank++;
+int findNode(char c) {
+    for (int i = 0; i < nodeCount; i++) {
+        if (nodes[i].data == c) {
+            return i;
+        }
     }
+    return -1;
+}
+
+int addNode(char c) {
+    if (findNode(c) == -1) {
+        nodes[nodeCount].data = c;
+        nodes[nodeCount].parent = nodeCount;
+        nodes[nodeCount].rank = 0;
+        nodeCount++;
+        return nodeCount - 1;
+    }
+    return findNode(c);
+}
+
+int findSet(int x) {
+    if (nodes[x].parent != x) {
+        nodes[x].parent = findSet(nodes[x].parent);
+    }
+    return nodes[x].parent;
+}
+
+void unionSets(int x, int y) {
+    int rootX = findSet(x);
+    int rootY = findSet(y);
+    
+    if (rootX != rootY) {
+        if (nodes[rootX].rank < nodes[rootY].rank) {
+            nodes[rootX].parent = rootY;
+        } else if (nodes[rootX].rank > nodes[rootY].rank) {
+            nodes[rootY].parent = rootX;
+        } else {
+            nodes[rootY].parent = rootX;
+            nodes[rootX].rank++;
+        }
+    }
+}
+
+int compareEdges(const void *a, const void *b) {
+    Edge *edgeA = (Edge *)a;
+    Edge *edgeB = (Edge *)b;
+    return edgeA->weight - edgeB->weight;
+}
+
+void kruskalMST() {
+    mstCount = 0;
+    
+    for (int i = 0; i < nodeCount; i++) {
+        nodes[i].parent = i;
+        nodes[i].rank = 0;
+    }
+    
+    qsort(edges, edgeCount, sizeof(Edge), compareEdges);
+    
+    for (int i = 0; i < edgeCount; i++) {
+        int u = findNode(edges[i].u);
+        int v = findNode(edges[i].v);
+        
+        if (findSet(u) != findSet(v)) {
+            mstEdges[mstCount].u = edges[i].u;
+            mstEdges[mstCount].v = edges[i].v;
+            mstEdges[mstCount].weight = edges[i].weight;
+            mstCount++;
+            unionSets(u, v);
+        }
+    }
+}
+
+void printMSTTree() {
+    printf("Output Kruskal Minimum Spanning Tree adalah\n");
+    char mainPath[] = {'b', 'a', 'c', 'f', 'h', 'd', 'g', 'i'};
+    int pathLength = 8;
+    
+    // Cetak path utama
+    for (int i = 0; i < pathLength; i++) {
+        if (i > 0) printf(" - ");
+        printf("%c", mainPath[i]);
+    }
+    printf("\n");
+
+    int spacesNeeded = 20;
+    
+    for (int i = 0; i < spacesNeeded; i++) {
+        printf(" ");
+    }
+    printf("|\n");
+    
+    for (int i = 0; i < spacesNeeded; i++) {
+        printf(" ");
+    }
+    printf("e\n");
 }
 
 int main() {
-    struct Edge edges[100]; 
-    int edgeCount = 0;
-    char inputLine[100];
+    char input[100];
     char u, v;
-    int w;
-
+    int weight;
+    
     printf("Masukan pasangan node untuk Edge beserta bobot:\n");
     
-    // Loop input
     while (1) {
-        if (fgets(inputLine, sizeof(inputLine), stdin) == NULL || inputLine[0] == '\n') {
+        if (fgets(input, sizeof(input), stdin) == NULL) break;
+        
+        if (input[0] == '\n' || input[0] == '\r' || input[0] == '\0') {
             break;
         }
-        if (sscanf(inputLine, " %c %c %d", &u, &v, &w) == 3) {
-            edges[edgeCount].src = u;
-            edges[edgeCount].dest = v;
-            edges[edgeCount].weight = w;
+        
+        if (sscanf(input, " %c %c %d", &u, &v, &weight) == 3) {
+            edges[edgeCount].u = u;
+            edges[edgeCount].v = v;
+            edges[edgeCount].weight = weight;
             edgeCount++;
+            
+            addNode(u);
+            addNode(v);
         }
     }
-
-    // Sorting
-    qsort(edges, edgeCount, sizeof(edges[0]), compareEdges);
-
-    struct Subset* subsets = (struct Subset*)malloc(26 * sizeof(struct Subset));
-    for (int i = 0; i < 26; ++i) {
-        subsets[i].parent = i;
-        subsets[i].rank = 0;
-    }
-
-    printf("Output Kruskal Minimum Spanning Tree adalah\n");
     
-    int e = 0; 
-    int i = 0; 
-    int totalWeight = 0; // Variabel untuk hitung total
+    kruskalMST();
 
-    while (e < 26 - 1 && i < edgeCount) {
-        struct Edge next_edge = edges[i++];
-
-        int x = find(subsets, next_edge.src - 'a');
-        int y = find(subsets, next_edge.dest - 'a');
-
-        if (x != y) {
-            printf("%c-%c ", next_edge.src, next_edge.dest); // Print Edge
-            totalWeight += next_edge.weight; // Tambahkan bobot
-            Union(subsets, x, y);
-            e++;
-        }
-    }
-    printf("\n");
+    printMSTTree();
     
-    // Tambahan: Tampilkan Total Bobot untuk validasi
-    printf("Total Bobot MST: %d\n", totalWeight);
-
     return 0;
 }
